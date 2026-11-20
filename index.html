@@ -63,6 +63,7 @@ button:disabled{opacity:.45;cursor:default}
 .meta span{white-space:nowrap}.meta a{color:var(--ink)}
 .stamp{position:absolute;top:16px;right:18px;background:var(--paper);font:700 13px "Space Grotesk",sans-serif;text-transform:uppercase;letter-spacing:.06em;padding:5px 9px;border:2px solid currentColor;border-radius:4px;transform:rotate(-3deg)}
 .card .head{padding-right:150px}
+.srcbox{display:inline-flex;align-items:center;gap:4px;margin:6px 0 0;padding:3px 9px;border:1px solid var(--line);border-radius:7px;background:var(--raised);color:var(--ink);font-size:12.5px;font-weight:600;text-decoration:none;white-space:nowrap}.srcbox:hover{border-color:var(--yel);color:var(--yel)}td .srcbox{display:flex;width:max-content}
 .v-correct{color:var(--ok)}.v-incorrect{color:var(--no)}.v-partial{color:var(--part)}.v-tooearly{color:var(--early)}.v-open{color:var(--open)}
 .tweet{margin-top:12px;border-left:3px solid var(--yel);background:var(--bg);border-radius:0 8px 8px 0;padding:4px 10px 4px 12px;font-size:15px;white-space:pre-wrap}
 .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
@@ -227,6 +228,8 @@ function verdictTweet(p,c){
   if(t.length>MAXT){const cut=t.length-MAXT+1,cl=p.claim.slice(0,Math.max(40,p.claim.length-cut)).replace(/\s+\S*$/,'')+'…';t=`${EMO[c.verdict]}\n\n${p.who}${yr}: ${cl}\n\n${c.note||val}\n\n${TAG}`.trim()}
   return t;
 }
+function srcUrl(c){const u=c.url||(/^https?:\/\/\S+$/.test((c.sources||'').trim())?c.sources.trim():'');return u}
+function srcLink(c){const u=srcUrl(c);if(!u)return'';let h='';try{h=new URL(u).hostname.replace(/^www\./,'')}catch{return''}if(/^(x|twitter)\.com$/.test(h))h='X';return`<a class="srcbox" href="${esc(u)}" target="_blank" rel="noopener" title="${esc(u)}">Source: ${esc(h)} ↗</a>`}
 
 /* ---------- board ---------- */
 function board(){
@@ -265,13 +268,14 @@ function card(p){
   ${PUB?`<div class="row">${p.sourceUrl?`<a class="btn ghost" target="_blank" rel="noopener" href="${esc(p.sourceUrl)}">${/x\.com\//.test(p.sourceUrl)?'View on X':'Source'}</a>`:''}</div>`:`<div class="tweet" data-tw="${esc(p.id)}">${esc(p.tweet||tweetFor(p))}</div><div class="row"><button class="ghost" data-copy="${esc(p.id)}">Copy tweet</button><a class="btn ghost" target="_blank" rel="noopener" href="https://x.com/intent/post?text=${encodeURIComponent(p.tweet||tweetFor(p))}">Post on X</a></div>`}
   <details class="dossier"><summary>Dossier, checks and verdict${checks.length?` (${checks.length})`:''}</summary>
    ${p.metric?.label?`<div class="fig" data-fig="${esc(p.id)}" style="height:280px"><svg></svg></div>${chartLegend(p)}<p class="count">${esc(p.metric.label)}${p.metric.unit?' ('+esc(p.metric.unit)+')':''}${p.metric.target!=null?` · predicted value: ${num(p.metric.target)}`:''}</p>`:''}
-   ${checks.length?`<table class="stack"><thead><tr><th>Date</th><th>Verdict</th><th>Value</th><th>Notes</th>${PUB?'':'<th></th>'}</tr></thead><tbody>${checks.map((c,i)=>`<tr><td>${fmt(c.date)}</td><td class="v-${c.verdict}"><b>${V[c.verdict][1]}</b></td><td>${esc(c.value??'')}</td><td>${esc(c.note)}${c.sources?`<br><span class="count">${esc(c.sources)}</span>`:''}</td>${PUB?'':`<td><button class="chip" data-ctw="${esc(p.id)}:${i}">Tweet</button></td>`}</tr>`).join('')}</tbody></table>`:'<p class="note">No checks yet.</p>'}
+   ${checks.length?`<table class="stack"><thead><tr><th>Date</th><th>Verdict</th><th>Value</th><th>Notes</th>${PUB?'':'<th></th>'}</tr></thead><tbody>${checks.map((c,i)=>`<tr><td>${fmt(c.date)}</td><td class="v-${c.verdict}"><b>${V[c.verdict][1]}</b>${srcLink(c)}</td><td>${esc(c.value??'')}</td><td>${esc(c.note)}${c.sources&&c.sources.trim()!==srcUrl(c)?`<br><span class="count">${esc(c.sources)}</span>`:''}</td>${PUB?'':`<td><button class="chip" data-ctw="${esc(p.id)}:${i}">Tweet</button></td>`}</tr>`).join('')}</tbody></table>`:'<p class="note">No checks yet.</p>'}
    ${PUB?'':`<h3 style="font-size:17px;margin-top:18px">New check</h3>
    <div class="grid">
     <label>Date<input type="date" id="cd-${esc(p.id)}" value="${today()}"></label>
     <label>Verdict<select id="cv-${esc(p.id)}">${['tooearly','correct','partial','incorrect'].map(k=>`<option value="${k}">${V[k][1]}</option>`).join('')}</select></label>
     ${p.metric?.label?`<label>Measured value${p.metric.unit?' ('+esc(p.metric.unit)+')':''}<input id="cm-${esc(p.id)}" inputmode="decimal"></label>`:''}
    </div>
+   <label style="margin-top:10px">Source link<input id="cu-${esc(p.id)}" type="url" placeholder="https://… (the article or data page that proves the verdict)"></label>
    <label style="margin-top:10px">Notes and evidence<textarea id="cn-${esc(p.id)}" style="min-height:80px" placeholder="What actually happened? With a source."></textarea></label>
    <div class="row"><button data-check="${esc(p.id)}">Save check</button><button class="ghost" data-ai="${esc(p.id)}" ${sample?'':'hidden'}>Ask Claude to suggest a verdict</button><span class="count" id="am-${esc(p.id)}"></span></div>
    <h3 style="font-size:17px;margin-top:18px">Edit details</h3>
@@ -367,7 +371,7 @@ function dash(){
   const dayKick=dayP?`${exact?'On this day':'Around this day'}, ${yrs} year${yrs===1?'':'s'} ago (${fmt(dayP.saidOn)})`:'';
   const lastOf=v=>items.filter(p=>p.verdict===v&&p.checks?.length).sort((a,b)=>lastCheck(b).localeCompare(lastCheck(a)))[0];
   const lc=lastOf('correct'),li=lastOf('incorrect');
-  const chkNote=p=>{if(!p)return'';const c=(p.checks||[]).slice().sort((a,b)=>b.date.localeCompare(a.date))[0];return c?`<p class="note" style="margin:10px 0 0">Checked ${fmt(c.date)}: ${esc(c.note)}</p>`:''};
+  const chkNote=p=>{if(!p)return'';const c=(p.checks||[]).slice().sort((a,b)=>b.date.localeCompare(a.date))[0];return c?`<p class="note" style="margin:10px 0 0">Checked ${fmt(c.date)}: ${esc(c.note)}</p>${srcLink(c)}`:''};
   const ups=items.filter(p=>p.metric&&(numChecks(p).length||(p.metric.history||[]).length)).sort((a,b)=>((FINAL.includes(a.verdict)?1:0)-(FINAL.includes(b.verdict)?1:0))||lastCheck(b).localeCompare(lastCheck(a)));
   upIdx=((upIdx%ups.length)+ups.length)%(ups.length||1);
   const up=ups[upIdx];let upExtra='';
@@ -470,6 +474,7 @@ async function saveEdits(id){
 async function addCheck(id){
   const p=get(id),c={date:$('#cd-'+CSS.escape(id)).value||today(),verdict:$('#cv-'+CSS.escape(id)).value,note:$('#cn-'+CSS.escape(id)).value.trim()};
   const m=$('#cm-'+CSS.escape(id));if(m&&m.value.trim())c.value=+m.value.replace(',','.');
+  const u=$('#cu-'+CSS.escape(id)).value.trim();if(u)c.url=u;
   c.tweet=verdictTweet(p,c);
   const checks=(p.checks||[]).concat([c]).sort((a,b)=>a.date.localeCompare(b.date));
   try{await db.doc('predictions/'+id).update({checks,verdict:c.verdict,nextCheck:nextAfterCheck(p,c.date,c.verdict),lastChecked:c.date,editedAt:new Date().toISOString()});toast('Check saved — the tweet is in the table')}catch{toast('Saving failed')}
@@ -482,8 +487,8 @@ Prediction: ${JSON.stringify({who:p.who,role:p.role,claim:p.claim,saidOn:p.saidO
 Extra evidence from the editors: ${$('#cn-'+CSS.escape(id)).value||'(none)'}
 Work only with what you know for certain and with the evidence supplied; if your knowledge does not reach today or the target date has not passed, choose "tooearly" and say what is needed to test it.
 The note goes straight into a tweet, so write it tweet-style: ONE short, punchy sentence in English (max 150 characters) saying why, with the key fact or number, followed by " Source: <short source name>" if you know a reliable source. No hedging, no repetition of the prediction.
-Return ONLY JSON: {"verdict":"correct|partial|incorrect|tooearly","note":"tweet-style reason + source, max 180 characters","value":number or null (current value of the measurable quantity, only if you know it for certain)}`,{modelTier:'complex'});
-    if(r&&V[r.verdict]){$('#cv-'+CSS.escape(id)).value=r.verdict;$('#cn-'+CSS.escape(id)).value=r.note||'';const m=$('#cm-'+CSS.escape(id));if(m&&r.value!=null)m.value=r.value;msg.textContent='Suggestion filled in. Review and save.'}else msg.textContent='No usable answer.';
+Return ONLY JSON: {"verdict":"correct|partial|incorrect|tooearly","note":"tweet-style reason + source, max 180 characters","value":number or null (current value of the measurable quantity, only if you know it for certain),"url":"full https link to the source you name, only if you are certain it exists, else null"}`,{modelTier:'complex'});
+    if(r&&V[r.verdict]){$('#cv-'+CSS.escape(id)).value=r.verdict;$('#cn-'+CSS.escape(id)).value=r.note||'';const m=$('#cm-'+CSS.escape(id));if(m&&r.value!=null)m.value=r.value;if(r.url)$('#cu-'+CSS.escape(id)).value=r.url;msg.textContent='Suggestion filled in. Review and save.'}else msg.textContent='No usable answer.';
   }catch(e){msg.textContent='Failed: '+(e.message||e.code)}
 }
 
