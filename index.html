@@ -69,7 +69,9 @@ button:disabled{opacity:.45;cursor:default}
 .wholine{display:flex;align-items:center;gap:10px}.wholine>span:last-child{min-width:0}
 .av{position:relative;flex:none;width:38px;height:38px;border-radius:50%;display:inline-grid;place-items:center;font:700 13px/1 "Space Grotesk",sans-serif;color:#fff;letter-spacing:.02em;overflow:hidden;box-shadow:0 0 0 2px var(--paper),0 0 0 3px var(--line2)}
 .av.org{border-radius:9px;font-size:11px}.av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:var(--paper)}
-.av.lg{width:54px;height:54px;font-size:17px}.av.lg.org{font-size:14px}
+.av.lg{width:54px;height:54px;font-size:17px}.av.lg.org{font-size:14px}.av.xl{width:88px;height:88px;font-size:28px}.av.xl.org{font-size:22px}
+.plink{color:inherit;text-decoration:none;display:inline-flex}a.who.plink{display:inline}a.who.plink:hover,.plink.more:hover{text-decoration:underline}.plink:hover .av{filter:brightness(1.12)}.plink.more{color:var(--yel-ink);font-weight:600}
+.phead{display:flex;align-items:center;gap:18px;margin:6px 0 18px}.phead h2{font-size:34px;margin:0}.phead .role{color:var(--mute);margin:4px 0 0}.backlink{margin:0 0 10px}.backlink a{color:var(--mute)}.precap{margin-bottom:22px}.plisthead{font-size:20px;margin:0 0 12px}
 .imgcredit{font-size:12px;color:var(--mute);margin-top:8px}
 .card .head{padding-right:150px}
 .srcbox{display:inline-flex;align-items:center;gap:4px;margin:6px 0 0;padding:3px 9px;border:1px solid var(--line);border-radius:7px;background:var(--raised);color:var(--ink);font-size:12.5px;font-weight:600;text-decoration:none;white-space:nowrap}.srcbox:hover{border-color:var(--yel-ink);color:var(--yel-ink)}td .srcbox{display:flex;width:max-content}
@@ -154,6 +156,9 @@ header .cta{position:relative;z-index:1;margin-top:18px}
   <div class="tools" id="filters"></div>
   <div id="list"></div>
 </div></section>
+<section class="band" id="v-person" hidden><div class="wrap">
+  <div id="person"></div>
+</div></section>
 <section class="band" id="v-calendar" hidden><div class="wrap">
   <div class="tools"><h2 style="font-size:32px;flex:1 1 auto">Check calendar</h2><button class="ghost" id="ics">Copy as calendar (.ics)</button><button class="ghost edonly" id="export">Copy data.json</button></div>
   <p class="note">Every prediction gets a check date. If a prediction runs for more than two years, it also gets a yearly interim check until its target date.</p>
@@ -216,7 +221,8 @@ let IMGS={};
 function buildImgs(){IMGS={};items.forEach(p=>{if(p.img&&/^https:\/\//.test(p.img)&&!IMGS[p.who])IMGS[p.who]={src:p.img,credit:p.imgCredit||''}})}
 function avatar(who,cls=''){const im=IMGS[who];
   return `<span class="av${isOrg(who)?' org':''}${cls?' '+cls:''}" style="background:hsl(${hue(who)} 48% 40%)" aria-hidden="true">${esc(initials(who))}${im?`<img src="${esc(im.src)}" alt="" loading="lazy" referrerpolicy="no-referrer" title="${esc(im.credit)}" onerror="this.remove()">`:''}</span>`}
-const whoLine=p=>`<div class="wholine">${avatar(p.who)}<span><span class="who">${esc(p.who)}</span> <span class="role">${esc(p.role)}</span></span></div>`;
+const plink=w=>`#person/${encodeURIComponent(w)}`;
+const whoLine=p=>`<div class="wholine"><a class="plink" href="${plink(p.who)}" data-person="${esc(p.who)}" aria-label="All predictions by ${esc(p.who)}">${avatar(p.who)}</a><span><a class="who plink" href="${plink(p.who)}" data-person="${esc(p.who)}">${esc(p.who)}</a> <span class="role">${esc(p.role)}</span></span></div>`;
 const imgCredit=p=>{const im=IMGS[p.who];return im&&im.credit?`<p class="imgcredit">Image: ${esc(im.credit)}</p>`:''};
 const V={open:['Open','Not yet checked'],tooearly:['Too early','Too early to tell'],correct:['Correct','Correct prediction'],partial:['Partly','Partly correct'],incorrect:['Wrong','Incorrect prediction']};
 const VC={open:'--open',tooearly:'--early',correct:'--ok',partial:'--part',incorrect:'--no'};
@@ -285,22 +291,22 @@ function list(){
   if(cat)L=L.filter(p=>catOf(p)===cat);
   if(q){const s=q.toLowerCase();L=L.filter(p=>[p.who,p.role,p.claim,p.outlet,p.topic].join(' ').toLowerCase().includes(s))}
   L.sort((a,b)=>(b.saidOn||'').localeCompare(a.saidOn||''));
-  $('#list').innerHTML=L.length?L.map(card).join(''):`<div class="empty">${items.length?'Nothing matches this filter.':(PUB?'No predictions yet.':'No predictions yet. Scan a source under <a href="#scan">Scan a source</a>.')}</div>`;
+  $('#list').innerHTML=L.length?L.map(p=>card(p)).join(''):`<div class="empty">${items.length?'Nothing matches this filter.':(PUB?'No predictions yet.':'No predictions yet. Scan a source under <a href="#scan">Scan a source</a>.')}</div>`;
   L.forEach(p=>chart(p));
 }
-function card(p){
+function card(p,ro){
   const v=p.verdict||'open',checks=p.checks||[];
-  return `<article class="card" id="c-${esc(p.id)}">
+  return `<article class="card" id="${ro?'pc':'c'}-${esc(p.id)}">
   <span class="stamp v-${v}">${V[v][0]}</span>
   <div class="head">${whoLine(p)}
   <p class="claim">${esc(p.claim)}</p>
   <div class="meta"><span>Said ${fmt(p.saidOn)}</span>${p.outlet?`<span>${p.sourceUrl?`<a href="${esc(p.sourceUrl)}" target="_blank" rel="noopener">${esc(p.outlet)}</a>`:esc(p.outlet)}</span>`:''}${p.targetDate?`<span>Target date ${fmt(p.targetDate)}</span>`:''}<span>${p.nextCheck?`Next check <b style="color:${p.nextCheck<=today()?'var(--no)':'inherit'}">${fmt(p.nextCheck)}</b>`:'Closed'}</span>${p.recurrence==='yearly'?'<span class="tag">yearly check</span>':''}${PUB?'':(p.by==='scan'?'<span class="tag">web scan</span>':'')+(p.by==='x-archief'?'<span class="tag">X archive</span>':'')}</div></div>
   ${p.quote?`<p class="note" style="margin:8px 0 0">“${esc(p.quote)}”</p>`:''}
-  ${PUB?`<div class="row">${p.sourceUrl?`<a class="btn ghost" target="_blank" rel="noopener" href="${esc(p.sourceUrl)}">${/x\.com\//.test(p.sourceUrl)?'View on X':'Source'}</a>`:''}</div>`:`<div class="tweet" data-tw="${esc(p.id)}">${esc(p.tweet||tweetFor(p))}</div><div class="row"><button class="ghost" data-copy="${esc(p.id)}">Copy tweet</button><a class="btn ghost" target="_blank" rel="noopener" href="https://x.com/intent/post?text=${encodeURIComponent(p.tweet||tweetFor(p))}">Post on X</a></div>`}
+  ${(PUB||ro)?`<div class="row">${p.sourceUrl?`<a class="btn ghost" target="_blank" rel="noopener" href="${esc(p.sourceUrl)}">${/x\.com\//.test(p.sourceUrl)?'View on X':'Source'}</a>`:''}</div>`:`<div class="tweet" data-tw="${esc(p.id)}">${esc(p.tweet||tweetFor(p))}</div><div class="row"><button class="ghost" data-copy="${esc(p.id)}">Copy tweet</button><a class="btn ghost" target="_blank" rel="noopener" href="https://x.com/intent/post?text=${encodeURIComponent(p.tweet||tweetFor(p))}">Post on X</a></div>`}
   <details class="dossier"><summary>Dossier, checks and verdict${checks.length?` (${checks.length})`:''}</summary>${imgCredit(p)}
    ${p.metric?.label?`<div class="fig" data-fig="${esc(p.id)}" style="height:280px"><svg></svg></div>${chartLegend(p)}<p class="count">${esc(p.metric.label)}${p.metric.unit?' ('+esc(p.metric.unit)+')':''}${p.metric.target!=null?` · predicted value: ${num(p.metric.target)}`:''}</p>`:''}
-   ${checks.length?`<table class="stack"><thead><tr><th>Date</th><th>Verdict</th><th>Value</th><th>Notes</th>${PUB?'':'<th></th>'}</tr></thead><tbody>${checks.map((c,i)=>`<tr><td>${fmt(c.date)}</td><td class="v-${c.verdict}"><b>${V[c.verdict][1]}</b>${srcLink(c)}</td><td>${esc(c.value??'')}</td><td>${esc(c.note)}${c.sources&&c.sources.trim()!==srcUrl(c)?`<br><span class="count">${esc(c.sources)}</span>`:''}</td>${PUB?'':`<td><button class="chip" data-ctw="${esc(p.id)}:${i}">Tweet</button></td>`}</tr>`).join('')}</tbody></table>`:'<p class="note">No checks yet.</p>'}
-   ${PUB?'':`<h3 style="font-size:17px;margin-top:18px">New check</h3>
+   ${checks.length?`<table class="stack"><thead><tr><th>Date</th><th>Verdict</th><th>Value</th><th>Notes</th>${(PUB||ro)?'':'<th></th>'}</tr></thead><tbody>${checks.map((c,i)=>`<tr><td>${fmt(c.date)}</td><td class="v-${c.verdict}"><b>${V[c.verdict][1]}</b>${srcLink(c)}</td><td>${esc(c.value??'')}</td><td>${esc(c.note)}${c.sources&&c.sources.trim()!==srcUrl(c)?`<br><span class="count">${esc(c.sources)}</span>`:''}</td>${(PUB||ro)?'':`<td><button class="chip" data-ctw="${esc(p.id)}:${i}">Tweet</button></td>`}</tr>`).join('')}</tbody></table>`:'<p class="note">No checks yet.</p>'}
+   ${(PUB||ro)?(ro&&!PUB?`<div class="row"><button class="ghost" data-open="${esc(p.id)}">Add or edit a check</button></div>`:''):`<h3 style="font-size:17px;margin-top:18px">New check</h3>
    <div class="grid">
     <label>Date<input type="date" id="cd-${esc(p.id)}" value="${today()}"></label>
     <label>Verdict<select id="cv-${esc(p.id)}">${['tooearly','correct','partial','incorrect'].map(k=>`<option value="${k}">${V[k][1]}</option>`).join('')}</select></label>
@@ -430,10 +436,10 @@ function dash(){
   const R=people[recapWho].slice().sort((a,b)=>(b.saidOn||'').localeCompare(a.saidOn||''));
   const cnt=k=>R.filter(p=>(p.verdict||'open')===k).length,chk=R.filter(p=>FINAL.includes(p.verdict)).length;
   const sc=chk?Math.round((cnt('correct')+cnt('partial')/2)/chk*100):null;
-  const recap=`<div class="tile"><h3>Track record per person</h3><div class="wholine">${avatar(recapWho,'lg')}<select id="recapsel" style="flex:1">${names.map(n=>`<option ${n===recapWho?'selected':''} value="${esc(n)}">${esc(n)} (${people[n].length})</option>`).join('')}</select></div>
+  const recap=`<div class="tile"><h3>Track record per person</h3><div class="wholine"><a class="plink" href="${plink(recapWho)}" data-person="${esc(recapWho)}" aria-label="Page of ${esc(recapWho)}">${avatar(recapWho,'lg')}</a><select id="recapsel" style="flex:1">${names.map(n=>`<option ${n===recapWho?'selected':''} value="${esc(n)}">${esc(n)} (${people[n].length})</option>`).join('')}</select></div>
    <div class="score"><span class="big">${sc==null?'—':sc+'%'}</span><span>${cnt('correct')} correct · ${cnt('partial')} partly · ${cnt('incorrect')} wrong · ${cnt('tooearly')+cnt('open')} still open</span></div>
    ${verdictBar(R)}<p class="count" style="margin:6px 0 0">Score = correct plus half for partly correct, divided by the number of judged predictions.</p>
-   <ul class="mini">${R.map(p=>`<li data-open="${esc(p.id)}"><span>${fmt(p.saidOn)}</span><b class="v-${p.verdict||'open'}">${V[p.verdict||'open'][0]}</b><span>${esc(p.claim)}</span></li>`).join('')}</ul></div>`;
+   <ul class="mini">${R.map(p=>`<li data-open="${esc(p.id)}"><span>${fmt(p.saidOn)}</span><b class="v-${p.verdict||'open'}">${V[p.verdict||'open'][0]}</b><span>${esc(p.claim)}</span></li>`).join('')}</ul><p style="margin:10px 0 0"><a class="plink more" href="${plink(recapWho)}" data-person="${esc(recapWho)}">All predictions by ${esc(recapWho)} →</a></p></div>`;
   const byCat={};items.forEach(p=>{(byCat[catOf(p)]=byCat[catOf(p)]||[]).push(p)});
   const cats=Object.keys(byCat).sort((a,b)=>byCat[b].length-byCat[a].length),mx=Math.max(...cats.map(c=>byCat[c].length));
   const topics=`<div class="tile"><h3>Predictions by topic</h3>${cats.map(c=>`<div class="catrow" data-cat="${esc(c)}"><span>${c}</span><div style="width:${byCat[c].length/mx*100}%">${verdictBar(byCat[c],'catbar')}</div><span class="n">${byCat[c].length}</span></div>`).join('')}
@@ -538,8 +544,24 @@ Return ONLY JSON: {"verdict":"correct|partial|incorrect|tooearly","note":"tweet-
 
 /* ---------- routing & events ---------- */
 const VIEWS=PUB?['overview','ledger','calendar','how']:['overview','ledger','calendar','scan'];
-function route(){const v=VIEWS.includes(location.hash.slice(1))?location.hash.slice(1):'overview';
-  ['overview','ledger','calendar','how','scan'].forEach(k=>$('#v-'+k).hidden=k!==v);
+/* ---------- person ---------- */
+let personWho='';
+function person(){
+  const who=personWho,R=items.filter(p=>p.who===who).sort((a,b)=>(b.saidOn||'').localeCompare(a.saidOn||''));
+  const back='<p class="backlink"><a href="#ledger">← All predictions</a></p>';
+  if(!R.length){$('#person').innerHTML=back+`<div class="empty">${items.length?'No predictions found by '+esc(who)+'.':'Loading…'}</div>`;return}
+  const roles=[...new Set(R.map(p=>p.role).filter(Boolean))];
+  const cnt=k=>R.filter(p=>(p.verdict||'open')===k).length,chk=R.filter(p=>FINAL.includes(p.verdict)).length;
+  const sc=chk?Math.round((cnt('correct')+cnt('partial')/2)/chk*100):null;
+  $('#person').innerHTML=back+`<div class="phead">${avatar(who,'xl')}<div><h2>${esc(who)}</h2>${roles.length?`<p class="role">${roles.map(esc).join(' · ')}</p>`:''}</div></div>
+  <div class="tile precap"><h3>Track record</h3><div class="score"><span class="big">${sc==null?'—':sc+'%'}</span><span>${cnt('correct')} correct · ${cnt('partial')} partly · ${cnt('incorrect')} wrong · ${cnt('tooearly')+cnt('open')} still open</span></div>
+   ${verdictBar(R)}<p class="count" style="margin:6px 0 0">Score = correct plus half for partly correct, divided by the number of judged predictions.</p></div>
+  <h3 class="plisthead">${R.length===1?'1 prediction':R.length+' predictions'}</h3>`+R.map(p=>card(p,true)).join('');
+  R.forEach(p=>{if(p.metric?.label)chart(p,$('#person').querySelector(`[data-fig="${CSS.escape(p.id)}"]`))});
+}
+function route(){const h=location.hash.slice(1),pv=h.startsWith('person/');const v=pv?'person':VIEWS.includes(h)?h:'overview';
+  ['overview','ledger','calendar','how','scan','person'].forEach(k=>$('#v-'+k).hidden=k!==v);
+  if(pv){let w=h.slice(7);try{w=decodeURIComponent(w)}catch(e){}const nw=w!==personWho||$('#person').dataset.shown!=='1';personWho=w;person();$('#person').dataset.shown='1';if(nw)requestAnimationFrame(()=>{const y=$('#v-person').getBoundingClientRect().top+scrollY-document.querySelector('nav').offsetHeight;scrollTo({top:Math.max(0,y),behavior:'instant'})})}else $('#person').dataset.shown='';
   document.querySelectorAll('nav a').forEach(a=>a.toggleAttribute('aria-current',a.dataset.v===v));if(v==='calendar')cal()}
 addEventListener('hashchange',route);route();
 function openPred(id){
@@ -550,8 +572,8 @@ function openPred(id){
   c.querySelector('details').open=true;
   requestAnimationFrame(()=>{const y=c.getBoundingClientRect().top+scrollY-(document.querySelector('nav').offsetHeight+12);scrollTo({top:y,behavior:'instant'});c.classList.add('flash');setTimeout(()=>c.classList.remove('flash'),1600)});
 }
-function renderAll(){board();filters();list();if(!$('#v-calendar').hidden)cal();dash()}
-document.addEventListener('click',e=>{const t=e.target.closest('button,[data-open],[data-cat]');if(!t)return;const d=t.dataset;
+function renderAll(){board();filters();list();if(!$('#v-calendar').hidden)cal();if(!$('#v-person').hidden)person();dash()}
+document.addEventListener('click',e=>{const t=e.target.closest('button,[data-person],[data-open],[data-cat]');if(!t||t.dataset.person!=null)return;const d=t.dataset;
   if(d.up){upIdx+=+d.up;dash();return}
   if(d.cat){e.preventDefault();cat=d.cat;filt='all';q='';location.hash='ledger';renderAll();return}
   if(d.f){filt=d.f;filters();list()}
