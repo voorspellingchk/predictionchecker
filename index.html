@@ -78,7 +78,8 @@ button:disabled{opacity:.45;cursor:default}
 .v-correct{color:var(--ok)}.v-incorrect{color:var(--no)}.v-partial{color:var(--part)}.v-tooearly{color:var(--early)}.v-open{color:var(--open)}
 .tweet{margin-top:12px;border-left:3px solid var(--yel);background:var(--bg);border-radius:0 8px 8px 0;padding:4px 10px 4px 12px;font-size:15px;white-space:pre-wrap}
 .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
-.count{font-size:13px;color:var(--mute)}.count.over{color:var(--no);font-weight:600}
+.count{font-size:13px;color:var(--mute)}
+.credit{font-size:12px;color:var(--mute);margin:4px 0 0;opacity:.85}.credit a{color:inherit;text-decoration:underline;text-underline-offset:2px}.credit a:hover{color:var(--ink)}.count.over{color:var(--no);font-weight:600}
 details.dossier{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
 details.dossier summary{cursor:pointer;font:600 15px "Space Grotesk",sans-serif;min-height:32px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:12px}
@@ -304,7 +305,7 @@ function card(p,ro){
   ${p.quote?`<p class="note" style="margin:8px 0 0">“${esc(p.quote)}”</p>`:''}
   ${(PUB||ro)?`<div class="row">${p.sourceUrl?`<a class="btn ghost" target="_blank" rel="noopener" href="${esc(p.sourceUrl)}">${/x\.com\//.test(p.sourceUrl)?'View on X':'Source'}</a>`:''}</div>`:`<div class="tweet" data-tw="${esc(p.id)}">${esc(p.tweet||tweetFor(p))}</div><div class="row"><button class="ghost" data-copy="${esc(p.id)}">Copy tweet</button><a class="btn ghost" target="_blank" rel="noopener" href="https://x.com/intent/post?text=${encodeURIComponent(p.tweet||tweetFor(p))}">Post on X</a></div>`}
   <details class="dossier"><summary>Dossier, checks and verdict${checks.length?` (${checks.length})`:''}</summary>${imgCredit(p)}
-   ${p.metric?.label?`<div class="fig" data-fig="${esc(p.id)}" style="height:280px"><svg></svg></div>${chartLegend(p)}<p class="count">${esc(p.metric.label)}${p.metric.unit?' ('+esc(p.metric.unit)+')':''}${p.metric.target!=null?` · predicted value: ${num(p.metric.target)}`:''}</p>`:''}
+   ${p.metric?.label?`<div class="fig" data-fig="${esc(p.id)}" style="height:280px"><svg></svg></div>${chartLegend(p)}<p class="count">${esc(p.metric.label)}${p.metric.unit?' ('+esc(p.metric.unit)+')':''}${p.metric.target!=null?` · predicted value: ${num(p.metric.target)}`:''}</p>${credit(p)}`:''}
    ${checks.length?`<table class="stack"><thead><tr><th>Date</th><th>Verdict</th><th>Value</th><th>Notes</th>${(PUB||ro)?'':'<th></th>'}</tr></thead><tbody>${checks.map((c,i)=>`<tr><td>${fmt(c.date)}</td><td class="v-${c.verdict}"><b>${V[c.verdict][1]}</b>${srcLink(c)}</td><td>${esc(c.value??'')}</td><td>${esc(c.note)}${c.sources&&c.sources.trim()!==srcUrl(c)?`<br><span class="count">${esc(c.sources)}</span>`:''}</td>${(PUB||ro)?'':`<td><button class="chip" data-ctw="${esc(p.id)}:${i}">Tweet</button></td>`}</tr>`).join('')}</tbody></table>`:'<p class="note">No checks yet.</p>'}
    ${(PUB||ro)?(ro&&!PUB?`<div class="row"><button class="ghost" data-open="${esc(p.id)}">Add or edit a check</button></div>`:''):`<h3 style="font-size:17px;margin-top:18px">New check</h3>
    <div class="grid">
@@ -380,6 +381,7 @@ function chart(p,box){
     const P=pts.map(q=>({x:X(yr(q.d)),y:Y(q.v),v:q.v,d:q.d})),last=P[P.length-1];
     g+=`<g class="meas"${!played&&!anim?' opacity="0"':''}><polyline fill="none" stroke="var(--ink)" stroke-width="2" points="${P.map(o=>o.x+','+o.y).join(' ')}"/>`+pts.map(q=>`<circle cx="${X(yr(q.d))}" cy="${Y(q.v)}" r="${said!=null&&yr(q.d)>=said?4.5:3}" fill="${q.b?'var(--paper)':'var(--ink)'}" stroke="var(--ink)" stroke-width="1.5"><title>${fmt(q.d)}: ${q.v}</title></circle>`).join('')+`<circle class="head" r="6" fill="var(--ink)" stroke="var(--paper)" stroke-width="2" opacity="0"/><text class="vcount" x="${W-R}" y="${stack?15:T-10}" text-anchor="end" stroke="var(--paper)" stroke-width="4" paint-order="stroke" font-size="13" font-weight="700" fill="var(--ink)">${esc(cnt(last.d,last.v,true))}</text></g>`;
     if(said!=null&&ref!=null)g+=`<circle cx="${X(said)}" cy="${Y(ref)}" r="6.5" fill="var(--yel)" stroke="var(--deep)" stroke-width="2"/>`;
+    g+=`<a href="https://x.com/predictionchk" target="_blank" rel="noopener"><text x="${W-4}" y="${H-3}" text-anchor="end" font-size="10" fill="var(--mute)" opacity=".7">@predictionchk</text></a>`;
     s.innerHTML=g;
     if(anim&&P.length){const my=tok,poly=s.querySelector('.meas polyline'),cs=[...s.querySelectorAll('.meas circle:not(.head)')],hd=s.querySelector('.meas .head'),vc=s.querySelector('.vcount');
       let ri=-1,fv=P[0].v,dv=P[0].v,ts=0;const xa=P[0].x,xb=last.x,dur=Math.min(3200,Math.max(1300,P.length*170)),t0=performance.now();cs.forEach(c=>c.style.opacity=0);hd.setAttribute('opacity','1');
@@ -392,6 +394,12 @@ function chart(p,box){
   draw();new ResizeObserver(()=>draw()).observe(s);box.closest('details')?.addEventListener('toggle',()=>draw());
   if(!played){const io=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting)&&s.clientWidth){played=true;io.disconnect();draw(true)}},{threshold:.35});io.observe(box)}
 }
+const LABEL_SRC=[[/S&P 500/i,'S&P Dow Jones Indices','https://www.spglobal.com/spdji/en/indices/equity/sp-500/'],[/Brent/i,'ICE Brent via Trading Economics','https://tradingeconomics.com/commodity/brent-crude-oil'],[/bitcoin/i,'CoinMarketCap','https://coinmarketcap.com/currencies/bitcoin/'],[/HadCRUT/i,'Met Office HadCRUT5','https://www.metoffice.gov.uk/hadobs/hadcrut5/'],[/NSIDC|sea.ice/i,'NSIDC Sea Ice Index','https://nsidc.org/data/seaice_index'],[/EU real GDP|euro ?area GDP/i,'Eurostat','https://ec.europa.eu/eurostat/databrowser/view/tec00115/default/table'],[/Nvidia/i,'Nvidia investor relations','https://investor.nvidia.com/financial-info/quarterly-results/default.aspx']];
+const SRC_URLS=[[/NSIDC/i,'https://nsidc.org/data/seaice_index'],[/HadCRUT|Met Office/i,'https://www.metoffice.gov.uk/hadobs/hadcrut5/'],[/Copernicus/i,'https://climate.copernicus.eu/'],[/WMO/,'https://wmo.int/'],[/Forbes/i,'https://www.forbes.com/real-time-billionaires/'],[/CoinMarketCap/i,'https://coinmarketcap.com/currencies/bitcoin/'],[/Eurostat/i,'https://ec.europa.eu/eurostat/'],[/BLS|Bureau of Labor/i,'https://www.bls.gov/'],[/ONS/,'https://www.ons.gov.uk/']];
+const dataSrc=p=>{const m=p.metric||{};if(m.source)return m.source;const l=LABEL_SRC.find(([r])=>r.test(m.label||''));if(l)return l[1];const c=[...(p.checks||[])].reverse().find(c=>c.sources&&c.value!=null&&c.value!=='');return c?c.sources.replace(/https?:\/\/\S+/g,'').replace(/^[\s·,;]+|[\s·,;]+$/g,'').trim():''};
+const dataSrcUrl=(p,s)=>{const m=p.metric||{};if(/^https:\/\//.test(m.sourceUrl||''))return m.sourceUrl;if(!m.source){const l=LABEL_SRC.find(([r])=>r.test(m.label||''));if(l)return l[2]}const hit=SRC_URLS.find(([r])=>r.test(s));if(hit)return hit[1];const c=[...(p.checks||[])].reverse().find(c=>c.value!=null&&c.value!==''&&(c.url||c.sources));return c?srcUrl(c):''};
+const xa=(u,t)=>u?`<a href="${esc(u)}" target="_blank" rel="noopener">${t}</a>`:t;
+const credit=p=>{const s=dataSrc(p),u=s?dataSrcUrl(p,s):'';return `<p class="credit">${s?`Data: ${xa(u,esc(s))} · `:''}Chart: ${xa('https://x.com/predictionchk','@predictionchk')} · ${xa('https://predictionchk.com/','predictionchk.com')}</p>`};
 const chartLegend=p=>`<div class="legend" style="color:var(--mute);margin-top:8px"><span><span class="dot" style="background:var(--ink)"></span>measured</span><span><span class="dot" style="background:var(--yel)"></span>moment of prediction (vertical line)</span><span><span class="dot" style="background:transparent;border:2px solid var(--yel)"></span>predicted route${p.metric&&p.metric.routes&&p.metric.routes.length>1?"s":""} to the target value</span><span><span class="dot" style="background:var(--deep);border:1px solid var(--line2)"></span>past</span>${trendOf(chartPts(p))?'<span><span class="dot" style="background:var(--early)"></span>trend line (all measurements)</span>':''}</div>`;
 
 /* ---------- overview ---------- */
@@ -428,7 +436,7 @@ function dash(){
   upIdx=((upIdx%ups.length)+ups.length)%(ups.length||1);
   const up=ups[upIdx];let upExtra='',upStamp=null;
   if(up){const tr=track(up),u=up.metric.unit?' '+esc(up.metric.unit):'';
-    upExtra=`<div class="fig" data-fig2="${esc(up.id)}" style="height:300px"><svg></svg></div>${chartLegend(up)}<p class="count">${esc(up.metric.label)}${up.metric.target!=null?` · predicted value ${num(up.metric.target)}${u}`:''}</p>`;
+    upExtra=`<div class="fig" data-fig2="${esc(up.id)}" style="height:300px"><svg></svg></div>${chartLegend(up)}<p class="count">${esc(up.metric.label)}${up.metric.target!=null?` · predicted value ${num(up.metric.target)}${u}`:''}</p>${credit(up)}`;
     if(tr&&tr.on!=null&&!FINAL.includes(up.verdict))upStamp=tr.on?['correct','On track']:['incorrect','Off track'];
     const fin=FINAL.includes(up.verdict),vpill=fin?`<span class="pill" style="background:${{correct:'#138a55',incorrect:'#cf3434',partial:'#c96a0c'}[up.verdict]};color:#fff">${V[up.verdict][1]}</span>`:'';
     if(!tr&&fin)upExtra+=`<div class="row">${vpill}<span>Checked on ${fmt(lastCheck(up))}</span></div>`;
@@ -488,7 +496,7 @@ async function scan(){
     const res=await sample.json(`You are the editor of the X account "Prediction Checker". In the text below, find statements that count as TESTABLE predictions about the future, made by well-known or authoritative people (scientists, columnists, politicians, executives, leaders of companies or institutions, commentators). Skip vague expectations, policy intentions without a testable outcome, and statements by anonymous people.
 Source: ${JSON.stringify(meta)}. Today's date: ${today()}.
 Return ONLY a JSON array, empty if there is nothing. Per prediction:
-{"who":"name","role":"short role/credential","quote":"key sentence verbatim from the text, max 25 words","claim":"the prediction as one clear, testable sentence in English, with what/when","topic":"topic in 1-3 words","saidOn":"YYYY-MM-DD","targetDate":"YYYY-MM-DD or null (if the speaker names a year: 31 December of that year; 'within 5 years' = saidOn+5 years)","metric":{"label":"measurable quantity","unit":"unit","baseline":number or null,"target":number or null} or null if there is no measurable quantity,"tweet":"tweet in English, max 250 characters, neutral tone, with the name and the prediction, no hashtags"}
+{"who":"name","role":"short role/credential","quote":"key sentence verbatim from the text, max 25 words","claim":"the prediction as one clear, testable sentence in English, with what/when","topic":"topic in 1-3 words","saidOn":"YYYY-MM-DD","targetDate":"YYYY-MM-DD or null (if the speaker names a year: 31 December of that year; 'within 5 years' = saidOn+5 years)","metric":{"label":"measurable quantity","unit":"unit","baseline":number or null,"target":number or null,"source":"where the measurement data comes from, e.g. NSIDC or BLS","sourceUrl":"link to that dataset or null"} or null if there is no measurable quantity,"tweet":"tweet in English, max 250 characters, neutral tone, with the name and the prediction, no hashtags"}
 TEXT:
 ${text.slice(0,60000)}`,{modelTier:'complex'});
     const arr=Array.isArray(res)?res:[];
