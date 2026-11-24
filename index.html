@@ -130,7 +130,7 @@ header .cta{position:relative;z-index:1;margin-top:18px}
 @media(max-width:700px){table.stack thead{display:none}table.stack tr{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;padding:10px 0;border-bottom:1px solid var(--line)}table.stack td{border:0;padding:0;min-width:0}table.stack td:nth-child(3):empty{display:none}table.stack td:nth-child(4){grid-column:1/-1;margin-top:4px}table.stack td:nth-child(5){grid-column:1/-1}
 .board{grid-template-columns:minmax(0,1fr)}.card .head{padding-right:0}.stamp{top:14px;right:12px;font-size:10.5px;padding:4px 7px}.tile>h3,.card .head>:first-child{padding-right:84px}.verdicts .stamp{position:static}.meta a,.meta span:has(a){white-space:normal;overflow-wrap:anywhere;min-width:0}.cal li{grid-template-columns:5em minmax(0,1fr)}.cal li .tag{grid-column:2}}
 @media(prefers-reduced-motion:reduce){.bar span,.tile{transition:none}}
-.sitefoot{padding:26px 0 40px;border-top:1px solid var(--line);margin-top:30px}.sitefoot .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;color:var(--mute);font-size:13px}
+.sitefoot{padding:26px 0 40px;border-top:1px solid var(--line);margin-top:30px}.sitefoot .wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;color:var(--mute);font-size:14px}
 .themeseg{display:inline-flex;border:1px solid var(--line2);border-radius:99px;overflow:hidden;background:var(--paper)}.themeseg button{background:none;border:0;color:var(--mute);font:600 13px "IBM Plex Sans",sans-serif;padding:7px 13px;min-height:34px;cursor:pointer;border-radius:0}.themeseg button[aria-pressed=true]{background:var(--yel);color:var(--on-yel)}.themeseg button:hover:not([aria-pressed=true]){color:var(--ink)}
 </style>
 <script>try{const t=localStorage.getItem('vc-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
@@ -626,7 +626,7 @@ document.addEventListener('input',e=>{const t=e.target;
 board();filters();list();
 const timer=setTimeout(()=>{if(!items.length)$('#list').innerHTML='<div class="empty">The data can\'t be reached yet. Try again later.</div>'},10000);
 const onData=()=>{clearTimeout(timer);buildImgs();const open=[...document.querySelectorAll('details.dossier[open]')].map(x=>x.closest('.card').id);
-  board();list();open.forEach(id=>{const c=document.getElementById(id);if(c)c.querySelector('details').open=true});if(!$('#v-calendar').hidden)cal();dash()};
+  board();list();open.forEach(id=>{const c=document.getElementById(id);if(c)c.querySelector('details').open=true});if(!$('#v-calendar').hidden)cal();if(!$('#v-person').hidden)person();dash()};
 if(PUB){fetch(PUB.data||'data.json',{cache:'no-cache'}).then(r=>r.json()).then(d=>{items=(d.predictions||d).filter(p=>p&&p.who&&p.claim);onData()}).catch(()=>{clearTimeout(timer);$('#list').innerHTML='<div class="empty">The predictions could not be loaded.</div>'})}
 else{
 claude.use('db').then(d=>{db=d;if(!d){clearTimeout(timer);$('#list').innerHTML='<div class="empty">Storage isn\'t available in this view. Open the page on claude.ai while signed in.</div>';return}
