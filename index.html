@@ -130,7 +130,10 @@ header .cta{position:relative;z-index:1;margin-top:18px}
 @media(max-width:700px){table.stack thead{display:none}table.stack tr{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;padding:10px 0;border-bottom:1px solid var(--line)}table.stack td{border:0;padding:0;min-width:0}table.stack td:nth-child(3):empty{display:none}table.stack td:nth-child(4){grid-column:1/-1;margin-top:4px}table.stack td:nth-child(5){grid-column:1/-1}
 .board{grid-template-columns:minmax(0,1fr)}.card .head{padding-right:0}.stamp{top:14px;right:12px;font-size:10.5px;padding:4px 7px}.tile>h3,.card .head>:first-child{padding-right:84px}.verdicts .stamp{position:static}.meta a,.meta span:has(a){white-space:normal;overflow-wrap:anywhere;min-width:0}.cal li{grid-template-columns:5em minmax(0,1fr)}.cal li .tag{grid-column:2}}
 @media(prefers-reduced-motion:reduce){.bar span,.tile{transition:none}}
+.sitefoot{padding:26px 0 40px;border-top:1px solid var(--line);margin-top:30px}.sitefoot .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;color:var(--mute);font-size:13px}
+.themeseg{display:inline-flex;border:1px solid var(--line2);border-radius:99px;overflow:hidden;background:var(--paper)}.themeseg button{background:none;border:0;color:var(--mute);font:600 13px "IBM Plex Sans",sans-serif;padding:7px 13px;min-height:34px;cursor:pointer;border-radius:0}.themeseg button[aria-pressed=true]{background:var(--yel);color:var(--on-yel)}.themeseg button:hover:not([aria-pressed=true]){color:var(--ink)}
 </style>
+<script>try{const t=localStorage.getItem('vc-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
 </head>
 <body>
 <header class="band"><div class="wrap">
@@ -193,6 +196,13 @@ header .cta{position:relative;z-index:1;margin-top:18px}
   <div id="cands" style="margin-top:20px"></div>
 </div></section>
 </main>
+<footer class="sitefoot"><div class="wrap"><span>Prediction Checker · <a href="https://x.com/predictionchk" target="_blank" rel="noopener" style="color:inherit">@predictionchk</a></span>
+  <div class="themeseg" role="group" aria-label="Appearance"><button type="button" data-theme-set="auto">Auto</button><button type="button" data-theme-set="light">☀️ Light</button><button type="button" data-theme-set="dark">🌙 Dark</button></div></div></footer>
+<script>(function(){const btns=[...document.querySelectorAll('[data-theme-set]')];
+const cur=()=>{try{return localStorage.getItem('vc-theme')||'auto'}catch(e){return 'auto'}};
+const paint=()=>{const c=cur();btns.forEach(b=>b.setAttribute('aria-pressed',b.dataset.themeSet===c))};
+btns.forEach(b=>b.onclick=()=>{const t=b.dataset.themeSet;try{t==='auto'?localStorage.removeItem('vc-theme'):localStorage.setItem('vc-theme',t)}catch(e){}
+  if(t==='auto')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;paint()});paint()})();</script>
 <div id="toast" role="status"></div>
 <script>window.VC_PUBLIC={"tipUrl": "https://docs.google.com/forms/d/1hzlLb6BLX0ljGePTzrmoCha9MpBU5q-fZtX-dMFlGOw/viewform", "x": "predictionchk", "data": "data.json"};</script>
 <script>
