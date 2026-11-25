@@ -192,7 +192,7 @@ header .cta{position:relative;z-index:1;margin-top:18px}
   <div class="row"><a class="btn tipbtn" target="_blank" rel="noopener">Submit a prediction</a></div>
 </div></section>
 <section class="band" id="v-post" hidden><div class="wrap">
-  <div class="tools"><h2 style="font-size:32px;flex:1 1 auto">Post</h2><div class="row" id="pfilters" style="margin:0"></div></div>
+  <div class="tools"><h2 style="font-size:32px;flex:1 1 auto">Post</h2><div class="row" id="pfilters" style="margin:0"></div><label style="display:flex;flex-direction:row;gap:6px;align-items:center;font-size:15px"><input type="checkbox" id="psound" checked> Sound effects</label></div>
   <p class="note">Ready-made posts with an animated video (the claim is typed out, the chart draws itself, then the verdict stamp lands) or a still image. Press ▶ Play or click the picture to preview. Check the text, download the video or image, open X or Bluesky with the text filled in, attach the image and press Post. For Instagram: download the image and copy the caption. Put the source link in your first reply, not in the post itself. Then tick where you posted it.</p>
   <div id="posts"></div>
 </div></section>
@@ -605,7 +605,7 @@ const xurl=t=>'https://x.com/intent/post?text='+encodeURIComponent(t);
 const burl=t=>'https://bsky.app/intent/compose?text='+encodeURIComponent(t);
 const graphemes=t=>{try{return [...new Intl.Segmenter().segment(t)].length}catch{return [...t].length}};
 function post(){
-  const box=$('#posts');if(!box)return;
+  const box=$('#posts');if(!box)return;const sw=$('#psound');if(sw)sw.checked=SOUND;
   if(!items.length){box.innerHTML='<div class="empty">Loading…</div>';return}
   const all=postList(),L=all.filter(o=>{const s=pst(o.key);return pfilt==='all'?true:pfilt==='done'?pdone(s):!pdone(s)&&!s.skip});
   const n=all.filter(o=>{const s=pst(o.key);return !pdone(s)&&!s.skip}).length;
@@ -667,6 +667,7 @@ function scene(o,ctx){
     for(const l of lines){if(left<=0)break;const s=l.t.slice(0,left);left-=l.t.length;draw(l,s);cur={l,s}}
     return n<total&&t>=t0?cur:null}
   function draw(t){
+    const _cn=t>=tC0?Math.floor(clamp((t-tC0)/(tC1-tC0||1))*nClaim):0,_nn=L.note&&t>=tN0?Math.floor(clamp((t-tN0)/(tN1-tN0||1))*nNote):0;
     ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.globalAlpha=1;ctx.setLineDash([]);
     ctx.fillStyle=C.deep;ctx.fillRect(0,0,W,H);
     const g=ctx.createRadialGradient(W*.85,-80,40,W*.85,-80,900);g.addColorStop(0,'#2a4bd155');g.addColorStop(1,'#0b143000');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
@@ -698,6 +699,7 @@ function scene(o,ctx){
       rr(ctx,-bw/2,-bh/2,bw,bh,16);ctx.fillStyle='#0b1430e6';ctx.fill();ctx.lineWidth=10;ctx.strokeStyle=col;ctx.stroke();
       rr(ctx,-bw/2+12,-bh/2+12,bw-24,bh-24,10);ctx.lineWidth=3;ctx.stroke();
       ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lab,0,4);ctx.restore();ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.globalAlpha=1}
+    return{chars:_cn+_nn,claimDone:t>=tC1,stamp:!!vd&&t>=tS}
   }
   return{dur,draw};
 }
@@ -730,19 +732,44 @@ function drawMini(ctx,p,pts,x,y,w,h,C,HD,TX,prog=1,alpha=1){
 }
 const cvOf=k=>document.querySelector(`canvas[data-pc="${CSS.escape(k)}"]`);
 async function pblob(k){const cv=cvOf(k),o=postList().find(x=>x.key===k);if(o)await drawCard(o,cv);return new Promise(r=>cv.toBlob(r,'image/png'))}
+/* --- sound effects (Web Audio) --- */
+function sfxKit(ac,dest){const out=ac.createGain();out.gain.value=.55;const comp=ac.createDynamicsCompressor();comp.threshold.value=-10;comp.ratio.value=8;out.connect(comp).connect(dest);
+  const noise=(dur)=>{const b=ac.createBuffer(1,Math.ceil(ac.sampleRate*dur),ac.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;return b};
+  const nb=noise(0.6);
+  function burst(t,{dur=.02,f=3000,q=1.2,gain=.5,type='bandpass'}){const s=ac.createBufferSource();s.buffer=nb;s.playbackRate.value=.9+Math.random()*.2;const fl=ac.createBiquadFilter();fl.type=type;fl.frequency.value=f;fl.Q.value=q;const g=ac.createGain();g.gain.setValueAtTime(gain,t);g.gain.exponentialRampToValueAtTime(.0008,t+dur);s.connect(fl).connect(g).connect(out);s.start(t);s.stop(t+dur+.02)}
+  function tone(t,{f0=90,f1=45,dur=.25,gain=.9,type='sine'}){const o=ac.createOscillator();o.type=type;o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f1,t+dur);const g=ac.createGain();g.gain.setValueAtTime(gain,t);g.gain.exponentialRampToValueAtTime(.0008,t+dur);o.connect(g).connect(out);o.start(t);o.stop(t+dur+.02)}
+  return{now:()=>ac.currentTime,
+    key(t=ac.currentTime){burst(t,{dur:.018,f:2600+Math.random()*1400,q:1.5,gain:.35+Math.random()*.15});burst(t+.004,{dur:.03,f:220,q:.8,gain:.25,type:'lowpass'})},
+    bell(t=ac.currentTime){tone(t,{f0:2093,f1:2080,dur:.9,gain:.18});tone(t,{f0:4186,f1:4170,dur:.5,gain:.05})},
+    stamp(t=ac.currentTime){burst(t,{dur:.05,f:1800,q:.6,gain:.7});tone(t,{f0:120,f1:42,dur:.35,gain:1});burst(t,{dur:.22,f:380,q:.7,gain:.9,type:'lowpass'})},
+    whoosh(t=ac.currentTime){const s=ac.createBufferSource();s.buffer=nb;const fl=ac.createBiquadFilter();fl.type='bandpass';fl.Q.value=.8;fl.frequency.setValueAtTime(400,t);fl.frequency.exponentialRampToValueAtTime(2400,t+.35);const g=ac.createGain();g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(.25,t+.2);g.gain.exponentialRampToValueAtTime(.001,t+.45);s.connect(fl).connect(g).connect(out);s.start(t);s.stop(t+.5)}
+  };
+}
+function sfxDriver(kit){let lastN=0,lastKey=0,stamped=false,belled=false,whooshed=false;
+  return(st,now)=>{if(!st)return;if(st.chars>lastN){if(now-lastKey>.045){kit.key();lastKey=now}lastN=st.chars}
+    if(st.claimDone&&!belled){belled=true;kit.bell()}
+    if(st.stamp&&!stamped){stamped=true;kit.whoosh();kit.stamp(kit.now()+.2)}}}
+
+let AC=null;
 async function pplay(k){const cv=cvOf(k),o=postList().find(x=>x.key===k);if(!o)return;await fontsReady;const my=cv._play=(cv._play||0)+1,ctx=cv.getContext('2d'),s=scene(o,ctx),t0=performance.now();
-  const step=now=>{if(my!==cv._play)return;const t=(now-t0)/1000;s.draw(Math.min(t,s.dur));if(t<s.dur)requestAnimationFrame(step)};requestAnimationFrame(step)}
-const VTYPE=['video/mp4;codecs=avc1.42E01E','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm'].find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t))||'';
+  let drv=null;if(SOUND){try{AC=AC||new AudioContext();AC.resume();drv=sfxDriver(sfxKit(AC,AC.destination))}catch{}}
+  const step=now=>{if(my!==cv._play)return;const t=(now-t0)/1000,st=s.draw(Math.min(t,s.dur));if(drv)drv(st,t);if(t<s.dur)requestAnimationFrame(step)};requestAnimationFrame(step)}
+let SOUND=true;try{SOUND=localStorage.getItem('vc-sound')!=='off'}catch{}
+const vsup=t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t);
+const VTYPE_AV=window.__forceAV||['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4;codecs=avc1,mp4a.40.2','video/mp4;codecs=avc1.640028,mp4a.40.2'].find(vsup)||'';
+const VTYPE=['video/mp4;codecs=avc1.42E01E','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm'].find(vsup)||'';
 async function pvideo(k,btn){
   if(!VTYPE){toast('This browser can\'t record video');return}
   const o=postList().find(x=>x.key===k);if(!o)return;await fontsReady;
   const cv=document.createElement('canvas');cv.width=1080;cv.height=1350;const ctx=cv.getContext('2d'),s=scene(o,ctx);s.draw(0);
-  const st=cv.captureStream(30),rec=new MediaRecorder(st,{mimeType:VTYPE,videoBitsPerSecond:8e6}),ch=[];rec.ondataavailable=e=>e.data.size&&ch.push(e.data);
+  const vs=cv.captureStream(30);let ac=null,drv=null,st=vs,TYPE=VTYPE;if(SOUND&&!VTYPE_AV)toast('This browser can\'t add sound to MP4; the video is saved without sound. Try Chrome or Safari on a computer.');
+  if(SOUND&&VTYPE_AV){TYPE=VTYPE_AV;try{ac=new AudioContext();await ac.resume();const dst=ac.createMediaStreamDestination();drv=sfxDriver(sfxKit(ac,dst));st=new MediaStream([...vs.getVideoTracks(),...dst.stream.getAudioTracks()])}catch{ac=null}}
+  const rec=new MediaRecorder(st,{mimeType:TYPE,videoBitsPerSecond:8e6}),ch=[];rec.ondataavailable=e=>e.data.size&&ch.push(e.data);
   const done=new Promise(r=>rec.onstop=r);const lbl=btn?btn.textContent:'';if(btn)btn.disabled=true;
   rec.start(250);const t0=performance.now();
-  await new Promise(res=>{const step=now=>{const t=(now-t0)/1000;s.draw(Math.min(t,s.dur));if(btn)btn.textContent=`Recording… ${Math.ceil(s.dur-t)}s`;if(t<s.dur+0.3)requestAnimationFrame(step);else res()};requestAnimationFrame(step)});
-  rec.stop();await done;st.getTracks().forEach(t=>t.stop());if(btn){btn.disabled=false;btn.textContent=lbl}
-  const ext=VTYPE.includes('mp4')?'mp4':'webm',blob=new Blob(ch,{type:VTYPE.split(';')[0]});
+  await new Promise(res=>{const step=now=>{const t=(now-t0)/1000,ss=s.draw(Math.min(t,s.dur));if(drv)drv(ss,t);if(btn)btn.textContent=`Recording… ${Math.ceil(s.dur-t)}s`;if(t<s.dur+0.3)requestAnimationFrame(step);else res()};requestAnimationFrame(step)});
+  rec.stop();await done;st.getTracks().forEach(t=>t.stop());if(ac)ac.close();if(btn){btn.disabled=false;btn.textContent=lbl}
+  const ext=TYPE.includes('mp4')?'mp4':'webm',blob=new Blob(ch,{type:TYPE.split(';')[0]});
   let dl=null;try{dl=await claude.use('downloads')}catch{}
   if(dl){try{await dl.save({filename:pid(k)+'.'+ext,data:blob});toast(ext==='mp4'?'Video saved':'Video saved as WebM (X needs MP4)')}catch(e){if(e&&e.code!=='declined')toast('Saving the video failed')}return}
   const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=pid(k)+'.'+ext;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);
@@ -809,6 +836,7 @@ document.addEventListener('click',e=>{const t=e.target.closest('[data-pf],[data-
   else if(d.pskip){const s=pst(d.pskip);psave(d.pskip,{skip:!s.skip}).then(post)}
 });
 document.addEventListener('change',e=>{const t=e.target;
+  if(t.id==='psound'){SOUND=t.checked;try{localStorage.setItem('vc-sound',SOUND?'on':'off')}catch{}}
   if(t.dataset.pmark){const[f,k]=[t.dataset.pmark.split('|')[0],t.dataset.pmark.slice(t.dataset.pmark.indexOf('|')+1)];psave(k,{[f]:t.checked?today():null}).then(()=>toast(t.checked?'Marked as posted':'Unmarked'))}
   if(t.dataset.ptext){const k=t.dataset.ptext,o=postList().find(x=>x.key===k);psave(k,{text:t.value.trim()===o?.text?null:t.value})}
 });
