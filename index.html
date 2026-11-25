@@ -693,7 +693,7 @@ function drawMini(ctx,p,pts,x,y,w,h,C,HD,TX){
 }
 const cvOf=k=>document.querySelector(`canvas[data-pc="${CSS.escape(k)}"]`);
 async function pblob(k){const cv=cvOf(k),o=postList().find(x=>x.key===k);if(o)await drawCard(o,cv);return new Promise(r=>cv.toBlob(r,'image/png'))}
-async function pdownload(k){const b=await pblob(k),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=pid(k)+'.png';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);toast('Image downloaded')}
+async function pdownload(k){const b=await pblob(k);let dl=null;try{dl=await claude.use('downloads')}catch{}if(dl){try{await dl.save({filename:pid(k)+'.png',data:b});toast('Image saved')}catch(e){if(e&&e.code!=='declined')toast('Saving the image failed')}return}const u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=pid(k)+'.png';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);toast('Image downloaded')}
 async function pcopyimg(k){try{const b=await pblob(k);await navigator.clipboard.write([new ClipboardItem({'image/png':b})]);toast('Image copied; paste it into the post')}catch{toast('Copying images isn\'t allowed here; use Download')}}
 
 /* ---------- person ---------- */
