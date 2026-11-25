@@ -193,7 +193,7 @@ header .cta{position:relative;z-index:1;margin-top:18px}
 </div></section>
 <section class="band" id="v-post" hidden><div class="wrap">
   <div class="tools"><h2 style="font-size:32px;flex:1 1 auto">Post</h2><div class="row" id="pfilters" style="margin:0"></div></div>
-  <p class="note">Ready-made posts with an image. Check the text, download or copy the image, open X or Bluesky with the text filled in, attach the image and press Post. For Instagram: download the image and copy the caption. Put the source link in your first reply, not in the post itself. Then tick where you posted it.</p>
+  <p class="note">Ready-made posts with an animated video (the claim is typed out, the chart draws itself, then the verdict stamp lands) or a still image. Press ▶ Play or click the picture to preview. Check the text, download the video or image, open X or Bluesky with the text filled in, attach the image and press Post. For Instagram: download the image and copy the caption. Put the source link in your first reply, not in the post itself. Then tick where you posted it.</p>
   <div id="posts"></div>
 </div></section>
 <section class="band" id="v-scan" hidden><div class="wrap">
@@ -616,7 +616,7 @@ function post(){
      <label>Post text <span class="count" data-pn="${k}"></span><textarea data-ptext="${k}" style="min-height:150px">${esc(t)}</textarea></label>
      <details class="preply"><summary>First reply, with the source link</summary><pre>${esc(preply(o))}</pre><button class="ghost" data-pcopy="r:${k}">Copy reply</button></details>
      <div class="row">
-      <button data-pdl="${k}">Download image</button><button class="ghost" data-pci="${k}">Copy image</button>
+      <button data-pvid="${k}">Download video</button><button class="ghost" data-pplay="${k}">▶ Play</button><button class="ghost" data-pdl="${k}">Download image</button><button class="ghost" data-pci="${k}">Copy image</button>
      </div>
      <div class="row">
       <a class="btn ghost" data-px="${k}" href="${esc(xurl(t))}" target="_blank" rel="noopener">Open in X ↗</a>
@@ -636,63 +636,117 @@ async function psave(k,patch){const id=pid(k),cur=POSTS[id]||{};const nx={...cur
 const fontsReady=(async()=>{try{await Promise.all(['700 64px "Space Grotesk"','500 30px "Space Grotesk"','400 30px "IBM Plex Sans"','600 30px "IBM Plex Sans"'].map(f=>document.fonts.load(f)))}catch{}})();
 function wrap(ctx,t,maxW,maxL){const words=String(t).split(/\s+/),lines=[];let cur='';for(const w of words){const n=cur?cur+' '+w:w;if(ctx.measureText(n).width>maxW&&cur){lines.push(cur);cur=w}else cur=n}if(cur)lines.push(cur);if(lines.length>maxL){lines.length=maxL;let l=lines[maxL-1];while(ctx.measureText(l+'…').width>maxW&&l.includes(' '))l=l.replace(/\s+\S*$/,'');lines[maxL-1]=l+'…'}return lines}
 function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
-async function drawCard(o,cv){
-  await fontsReady;const p=o.p,ctx=cv.getContext('2d'),W=1080,H=1350,M=72,HD='"Space Grotesk",sans-serif',TX='"IBM Plex Sans",sans-serif';
+const ease=t=>t<=0?0:t>=1?1:1-Math.pow(1-t,3);
+const clamp=t=>Math.max(0,Math.min(1,t));
+function scene(o,ctx){
+  const p=o.p,W=1080,H=1350,M=72,HD='"Space Grotesk",sans-serif',TX='"IBM Plex Sans",sans-serif';
   const C={bg:'#0e1a3d',deep:'#0b1430',paper:'#15244f',ink:'#eef1fa',mute:'#a7b1d0',line:'#28396f',yel:'#ffd23f'};
-  ctx.fillStyle=C.deep;ctx.fillRect(0,0,W,H);
-  const g=ctx.createRadialGradient(W*.85,-80,40,W*.85,-80,900);g.addColorStop(0,'#2a4bd155');g.addColorStop(1,'#0b143000');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-  // header
-  ctx.font=`700 34px ${HD}`;ctx.fillStyle=C.ink;ctx.textBaseline='alphabetic';ctx.fillText('Prediction Checker',M,M+30);
-  ctx.font=`500 28px ${HD}`;ctx.fillStyle=C.mute;ctx.textAlign='right';ctx.fillText('@predictionchk',W-M,M+30);ctx.textAlign='left';
-  // stamp
-  let lab,col;if(o.kind==='check'){[lab,col]=VLABEL[o.c.verdict]||['CHECK',C.yel]}else if(o.kind==='anniversary'){lab=(p.jubilee||'').toUpperCase()+' AGO';col=C.yel;if(!p.jubilee)lab='LOOKING BACK'}else{lab='PREDICTION LOGGED';col=C.yel}
-  let y=M+132;ctx.font=`700 40px ${HD}`;const sw=ctx.measureText(lab).width+48;ctx.save();ctx.translate(M,y);ctx.rotate(-.035);rr(ctx,0,-46,sw,64,10);ctx.fillStyle=col;ctx.fill();ctx.fillStyle='#0b1430';ctx.fillText(lab,24,0);ctx.restore();
-  // who
-  y+=96;ctx.font=`700 64px ${HD}`;ctx.fillStyle=C.ink;for(const l of wrap(ctx,p.who,W-2*M,2)){ctx.fillText(l,M,y);y+=70}
-  ctx.font=`400 28px ${TX}`;ctx.fillStyle=C.mute;const sub=[p.role,p.saidOn?'said '+new Date(p.saidOn+'T12:00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'}):''].filter(Boolean).join(' · ');for(const l of wrap(ctx,sub,W-2*M,2)){ctx.fillText(l,M,y-14);y+=38}
-  // claim
-  y+=26;ctx.fillStyle=C.yel;ctx.fillRect(M,y-6,6,0);
-  ctx.font=`600 44px ${TX}`;ctx.fillStyle=C.ink;const cl=wrap(ctx,'“'+p.claim+'”',W-2*M-28,6);const cy0=y;for(const l of cl){y+=54;ctx.fillText(l,M+28,y)}ctx.fillStyle=C.yel;ctx.fillRect(M,cy0+10,6,y-cy0+4);
-  y+=40;
-  // chart or note
-  const cc=o.c||(o.kind==='anniversary'?[...(p.checks||[])].sort((a,b)=>b.date.localeCompare(a.date))[0]:null),pts=chartPts(p),m=p.metric||{},note=cc?cc.note||'':'',footH=150;
-  if(cc&&o.kind==='anniversary'){const[vl,vc]=VLABEL[cc.verdict]||['WHAT HAPPENED',C.yel];ctx.font=`700 30px ${HD}`;ctx.fillStyle=vc;y+=34;ctx.fillText('WHAT HAPPENED: '+vl,M,y);y+=34}
-  const avail=H-footH-y;
-  if(pts.length>=2&&avail>300){
-    const noteL=note?(ctx.font=`400 32px ${TX}`,wrap(ctx,note,W-2*M,3)):[];const ch=Math.min(440,avail-(noteL.length?noteL.length*42+40:0)-20);
-    drawMini(ctx,p,pts,M,y,W-2*M,ch,C,HD,TX);y+=ch+40;
-    ctx.font=`400 32px ${TX}`;ctx.fillStyle=C.ink;for(const l of noteL){ctx.fillText(l,M,y);y+=42}
-  }else if(note){
-    rr(ctx,M,y,W-2*M,Math.min(avail-20,60+wrap(ctx,note,W-2*M-60,6).length*48),18);ctx.fillStyle=C.paper;ctx.fill();
-    ctx.font=`400 36px ${TX}`;ctx.fillStyle=C.ink;let yy=y+62;for(const l of wrap(ctx,note,W-2*M-60,6)){ctx.fillText(l,M+30,yy);yy+=48}
-  }else if(p.nextCheck){rr(ctx,M,y,W-2*M,190,18);ctx.fillStyle=C.paper;ctx.fill();ctx.font=`500 28px ${HD}`;ctx.fillStyle=C.mute;ctx.fillText('WE\'LL CHECK THIS ON',M+36,y+66);ctx.font=`700 64px ${HD}`;ctx.fillStyle=C.yel;ctx.fillText(new Date(p.nextCheck+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}),M+36,y+146)}
-  // footer
-  ctx.fillStyle=C.line;ctx.fillRect(M,H-footH+20,W-2*M,2);
-  ctx.font=`700 34px ${HD}`;ctx.fillStyle=C.yel;ctx.fillText('predictionchk.com',M,H-M+4);
-  const ds=dataSrc(p);if(ds&&pts.length>=2){ctx.font=`400 24px ${TX}`;ctx.fillStyle=C.mute;ctx.textAlign='right';ctx.fillText(wrap(ctx,'Data: '+ds,520,1)[0],W-M,H-M+2);ctx.textAlign='left'}
+  const cc=o.c||(o.kind!=='prediction'?[...(p.checks||[])].sort((a,b)=>b.date.localeCompare(a.date))[0]:null);
+  const vd=cc&&VLABEL[cc.verdict]?cc.verdict:null;
+  const badge=o.kind==='anniversary'?((p.jubilee||'').toUpperCase()+' AGO').trim():o.kind==='check'?'PREDICTION CHECK':'NEW PREDICTION';
+  // ---- layout (fixed, independent of time) ----
+  let y=M+132;const L={};
+  ctx.font=`700 64px ${HD}`;L.who=wrap(ctx,p.who,W-2*M,2).map(l=>{y+=0;const r={t:l,y:y+96};y+=70;return r});y+=96;
+  ctx.font=`400 28px ${TX}`;const sub=[p.role,p.saidOn?'said '+new Date(p.saidOn+'T12:00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'}):''].filter(Boolean).join(' · ');
+  L.sub=wrap(ctx,sub,W-2*M,2).map(l=>{const r={t:l,y:y-14};y+=38;return r});
+  y+=26;ctx.font=`600 44px ${TX}`;const cy0=y;L.claim=wrap(ctx,'“'+p.claim+'”',W-2*M-28,6).map(l=>{y+=54;return{t:l,y}});L.bar=[cy0+10,y-cy0+4];
+  y+=40;const pts=chartPts(p),m=p.metric||{},note=cc?cc.note||'':'',footH=150,avail=H-footH-y;
+  if(cc&&o.kind==='anniversary'){y+=34;L.wh={y,t:'WHAT HAPPENED'};y+=34}
+  if(pts.length>=2&&avail>300){ctx.font=`400 32px ${TX}`;const nl=note?wrap(ctx,note,W-2*M,3):[];const ch=Math.min(440,H-footH-y-(nl.length?nl.length*42+40:0)-20);
+    L.chart={x:M,y,w:W-2*M,h:ch};y+=ch+40;L.note={lines:nl.map(t=>{const r={t,y};y+=42;return r}),font:`400 32px ${TX}`,box:null}}
+  else if(note){ctx.font=`400 36px ${TX}`;const nl=wrap(ctx,note,W-2*M-60,6);const bh=Math.min(H-footH-y-20,60+nl.length*48);L.note={lines:nl.map((t,i)=>({t,y:y+62+i*48})),font:`400 36px ${TX}`,box:[M,y,W-2*M,bh],x:M+30};y+=bh}
+  else if(p.nextCheck){L.due={y}}
+  // stamp position: over the claim, right side
+  const free=H-footH-y;const SP=free>=220?{x:W/2,y:y+free/2,r:-0.12,s:1.25}:{x:W-M-200,y:L.who[0].y-24,r:-0.14,s:.85};
+  // ---- timeline (seconds) ----
+  const nClaim=L.claim.reduce((a,l)=>a+l.t.length,0),tC0=0.6,tC1=tC0+Math.min(3.2,nClaim*0.035);
+  const tG0=tC1+0.3,tG1=L.chart?tG0+2.4:tG0;
+  const nNote=L.note?L.note.lines.reduce((a,l)=>a+l.t.length,0):0,tN0=tG1+0.2,tN1=tN0+Math.min(2.6,nNote*0.022);
+  const tS=tN1+0.35,dur=tS+3.2;
+  function typed(lines,t0,t1,t,draw){const total=lines.reduce((a,l)=>a+l.t.length,0),n=Math.floor(clamp((t-t0)/(t1-t0||1))*total);let left=n,cur=null;
+    for(const l of lines){if(left<=0)break;const s=l.t.slice(0,left);left-=l.t.length;draw(l,s);cur={l,s}}
+    return n<total&&t>=t0?cur:null}
+  function draw(t){
+    ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.globalAlpha=1;ctx.setLineDash([]);
+    ctx.fillStyle=C.deep;ctx.fillRect(0,0,W,H);
+    const g=ctx.createRadialGradient(W*.85,-80,40,W*.85,-80,900);g.addColorStop(0,'#2a4bd155');g.addColorStop(1,'#0b143000');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    const a0=ease(t/0.5);ctx.globalAlpha=a0;
+    ctx.font=`700 34px ${HD}`;ctx.fillStyle=C.ink;ctx.fillText('Prediction Checker',M,M+30);
+    ctx.font=`500 28px ${HD}`;ctx.fillStyle=C.mute;ctx.textAlign='right';ctx.fillText('@predictionchk',W-M,M+30);ctx.textAlign='left';
+    ctx.font=`700 34px ${HD}`;const bw=ctx.measureText(badge).width+40;ctx.save();ctx.translate(M,M+132);ctx.rotate(-.03);rr(ctx,0,-42,bw,58,10);ctx.fillStyle=C.yel;ctx.fill();ctx.fillStyle='#0b1430';ctx.fillText(badge,20,0);ctx.restore();
+    ctx.font=`700 64px ${HD}`;ctx.fillStyle=C.ink;L.who.forEach(l=>ctx.fillText(l.t,M,l.y));
+    ctx.font=`400 28px ${TX}`;ctx.fillStyle=C.mute;L.sub.forEach(l=>ctx.fillText(l.t,M,l.y));
+    ctx.globalAlpha=1;
+    // claim typing
+    if(t>=tC0){ctx.fillStyle=C.yel;ctx.fillRect(M,L.bar[0],6,L.bar[1]*ease((t-tC0)/0.4));
+      ctx.font=`600 44px ${TX}`;ctx.fillStyle=C.ink;const cur=typed(L.claim,tC0,tC1,t,(l,s)=>ctx.fillText(s,M+28,l.y));
+      if(cur&&Math.floor(t*3)%2===0){ctx.fillStyle=C.yel;ctx.fillRect(M+28+ctx.measureText(cur.s).width+4,cur.l.y-38,4,46)}}
+    if(L.wh&&t>=tG0){const[vl,vc]=VLABEL[cc.verdict]||['',C.yel];ctx.globalAlpha=ease((t-tG0)/0.4);ctx.font=`700 30px ${HD}`;ctx.fillStyle=C.mute;ctx.fillText(L.wh.t,M,L.wh.y);ctx.globalAlpha=1}
+    if(L.chart&&t>=tG0-0.2)drawMini(ctx,p,pts,L.chart.x,L.chart.y,L.chart.w,L.chart.h,C,HD,TX,clamp((t-tG0)/(tG1-tG0)),ease((t-tG0+0.2)/0.4));
+    if(L.note&&t>=tN0){if(L.note.box){const b=L.note.box;ctx.globalAlpha=ease((t-tN0+0.2)/0.3);rr(ctx,b[0],b[1],b[2],b[3],18);ctx.fillStyle=C.paper;ctx.fill();ctx.globalAlpha=1}
+      ctx.font=L.note.font;ctx.fillStyle=C.ink;typed(L.note.lines,tN0,tN1,t,(l,s)=>ctx.fillText(s,L.note.x||M,l.y))}
+    if(L.due&&t>=tG0){const yy=L.due.y,a=ease((t-tG0)/0.5);ctx.globalAlpha=a;rr(ctx,M,yy+(1-a)*30,W-2*M,190,18);ctx.fillStyle=C.paper;ctx.fill();ctx.font=`500 28px ${HD}`;ctx.fillStyle=C.mute;ctx.fillText('WE\'LL CHECK THIS ON',M+36,yy+66+(1-a)*30);ctx.font=`700 64px ${HD}`;ctx.fillStyle=C.yel;ctx.fillText(new Date(p.nextCheck+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}),M+36,yy+146+(1-a)*30);ctx.globalAlpha=1}
+    // footer
+    ctx.globalAlpha=a0;ctx.fillStyle=C.line;ctx.fillRect(M,H-footH+20,W-2*M,2);ctx.font=`700 34px ${HD}`;ctx.fillStyle=C.yel;ctx.fillText('predictionchk.com',M,H-M+4);
+    const ds=dataSrc(p);if(ds&&pts.length>=2){ctx.font=`400 24px ${TX}`;ctx.fillStyle=C.mute;ctx.textAlign='right';ctx.fillText(wrap(ctx,'Data: '+ds,520,1)[0],W-M,H-M+2);ctx.textAlign='left'}
+    ctx.globalAlpha=1;
+    // stamp slam
+    if(vd&&t>=tS){const[lab,col]=VLABEL[vd],k=clamp((t-tS)/0.22),sc=k<1?2.6-1.6*ease(k):1+0.06*Math.max(0,1-(t-tS-0.22)/0.25)*Math.sin((t-tS)*60);
+      const shake=k>=1&&t-tS<0.45?(Math.random()-.5)*10:0;
+      ctx.save();ctx.translate(SP.x+shake,SP.y+shake);ctx.rotate(SP.r);ctx.scale(sc*SP.s,sc*SP.s);ctx.globalAlpha=Math.min(1,k*1.4);
+      ctx.font=`700 ${lab.length>12?50:78}px ${HD}`;const tw=ctx.measureText(lab).width,bw=tw+70,bh=lab.length>12?100:128;
+      rr(ctx,-bw/2,-bh/2,bw,bh,16);ctx.fillStyle='#0b1430e6';ctx.fill();ctx.lineWidth=10;ctx.strokeStyle=col;ctx.stroke();
+      rr(ctx,-bw/2+12,-bh/2+12,bw-24,bh-24,10);ctx.lineWidth=3;ctx.stroke();
+      ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lab,0,4);ctx.restore();ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.globalAlpha=1}
+  }
+  return{dur,draw};
 }
-function drawMini(ctx,p,pts,x,y,w,h,C,HD,TX){
+async function drawCard(o,cv){await fontsReady;const ctx=cv.getContext('2d'),s=scene(o,ctx);s.draw(s.dur)}
+function drawMini(ctx,p,pts,x,y,w,h,C,HD,TX,prog=1,alpha=1){
   const m=p.metric||{},tgt=m.target!=null&&m.target!==''&&p.targetDate?{x:yr(p.targetDate),v:+m.target}:null;
-  ctx.fillStyle=C.paper;rr(ctx,x,y,w,h,18);ctx.fill();
-  const lp=pts[pts.length-1],lt=lp.d.slice(0,4)+': '+num(lp.v)+(m.unit&&m.unit.length<12?' '+m.unit:'');ctx.font=`700 26px ${HD}`;const lw=ctx.measureText(lt).width;ctx.fillStyle=C.ink;ctx.textAlign='right';ctx.fillText(lt,x+w-24,y+40);ctx.textAlign='left';
-  ctx.font=`500 24px ${HD}`;ctx.fillStyle=C.mute;ctx.fillText(wrap(ctx,(m.label||'').replace(/\s*\(.*$/,'')+(m.unit?' ('+m.unit+')':''),w-72-lw,1)[0]||'',x+24,y+40);
+  ctx.globalAlpha=alpha;ctx.fillStyle=C.paper;rr(ctx,x,y,w,h,18);ctx.fill();
   const xs=pts.map(q=>yr(q.d)).concat(tgt?[tgt.x]:[]),vs=pts.map(q=>q.v).concat(tgt?[tgt.v]:[]);
   let x0=Math.min(...xs),x1=Math.max(...xs);if(x1-x0<1)x1=x0+1;let lo=Math.min(...vs),hi=Math.max(...vs);if(lo===hi){lo--;hi++}const pad=(hi-lo)*.08;lo=lo>=0&&lo-pad<0?0:lo-pad;hi+=pad;const tk=niceTicks(lo,hi,4);lo=tk.lo;hi=tk.hi;
-  ctx.font=`400 20px ${TX}`;const L=x+24+Math.max(...tk.vals.map(v=>ctx.measureText(tk.fmt(v)).width))+12,R=x+w-30,T=y+70,B=y+h-46;
-  const X=v=>L+(v-x0)/(x1-x0)*(R-L),Y=v=>T+(hi-v)/(hi-lo)*(B-T);
+  ctx.font=`400 20px ${TX}`;const Lx=x+24+Math.max(...tk.vals.map(v=>ctx.measureText(tk.fmt(v)).width))+12,R=x+w-30,T=y+70,B=y+h-46;
+  const X=v=>Lx+(v-x0)/(x1-x0)*(R-Lx),Y=v=>T+(hi-v)/(hi-lo)*(B-T);
   ctx.strokeStyle=C.line;ctx.lineWidth=2;ctx.fillStyle=C.mute;ctx.textAlign='right';
-  for(const v of tk.vals){ctx.beginPath();ctx.moveTo(L,Y(v));ctx.lineTo(R,Y(v));ctx.stroke();ctx.fillText(tk.fmt(v),L-10,Y(v)+7)}
+  for(const v of tk.vals){ctx.beginPath();ctx.moveTo(Lx,Y(v));ctx.lineTo(R,Y(v));ctx.stroke();ctx.fillText(tk.fmt(v),Lx-10,Y(v)+7)}
   ctx.textAlign='center';const ys=Math.ceil(x0),ye=Math.floor(x1),st=Math.max(1,Math.ceil((ye-ys+1)/7));for(let yy=ys;yy<=ye;yy+=st)ctx.fillText(String(yy),X(yy),B+32);ctx.textAlign='left';
   const said=p.saidOn?yr(p.saidOn):null;
-  if(said!=null&&said>=x0&&said<=x1){ctx.strokeStyle=C.ink;ctx.globalAlpha=.5;ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(X(said),T-6);ctx.lineTo(X(said),B);ctx.stroke();ctx.globalAlpha=1}
+  if(said!=null&&said>=x0&&said<=x1){ctx.strokeStyle=C.ink;ctx.globalAlpha=.5*alpha;ctx.beginPath();ctx.moveTo(X(said),T-6);ctx.lineTo(X(said),B);ctx.stroke();ctx.globalAlpha=alpha}
   if(tgt){let ref=null;if(said!=null){const b=pts.filter(q=>yr(q.d)<=said).pop();ref=b?b.v:(m.baseline!=null&&m.baseline!==''?+m.baseline:null)}
     ctx.strokeStyle=C.yel;ctx.lineWidth=4;if(ref!=null&&said!=null){ctx.setLineDash([14,10]);ctx.beginPath();ctx.moveTo(X(said),Y(ref));ctx.lineTo(X(tgt.x),Y(tgt.v));ctx.stroke();ctx.setLineDash([])}
     ctx.beginPath();ctx.arc(X(tgt.x),Y(tgt.v),10,0,7);ctx.stroke();ctx.font=`700 24px ${HD}`;ctx.fillStyle=C.yel;const tl='predicted: '+num(tgt.v);ctx.textAlign=X(tgt.x)>x+w/2?'right':'left';ctx.fillText(tl,X(tgt.x)+(ctx.textAlign==='right'?-18:18),Y(tgt.v)+(Y(tgt.v)<T+40?34:-16));ctx.textAlign='left'}
-  ctx.strokeStyle=C.ink;ctx.lineWidth=4;ctx.beginPath();pts.forEach((q,i)=>{const px=X(yr(q.d)),py=Y(q.v);i?ctx.lineTo(px,py):ctx.moveTo(px,py)});ctx.stroke();
-  ctx.fillStyle=C.ink;pts.forEach(q=>{ctx.beginPath();ctx.arc(X(yr(q.d)),Y(q.v),6,0,7);ctx.fill()});
+  // measured line, revealed by prog
+  const P=pts.map(q=>({x:X(yr(q.d)),y:Y(q.v),v:q.v,d:q.d})),xh=P[0].x+(P[P.length-1].x-P[0].x)*ease(prog);
+  let i=0;while(i<P.length-1&&P[i+1].x<=xh)i++;const a=P[i],b=P[Math.min(i+1,P.length-1)],fr=b.x>a.x?(xh-a.x)/(b.x-a.x):0,yh=a.y+(b.y-a.y)*fr;
+  ctx.strokeStyle=C.ink;ctx.lineWidth=4;ctx.beginPath();P.slice(0,i+1).forEach((q,k)=>k?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y));ctx.lineTo(xh,yh);ctx.stroke();
+  ctx.fillStyle=C.ink;P.slice(0,i+1).forEach(q=>{ctx.beginPath();ctx.arc(q.x,q.y,6,0,7);ctx.fill()});
+  if(prog<1){ctx.beginPath();ctx.arc(xh,yh,10,0,7);ctx.fill()}
+  const cp=prog>=1?P[P.length-1]:P[i],unit=m.unit&&m.unit.length<12?' '+m.unit:'',lt=(prog>=1?'latest ':'')+cp.d.slice(0,4)+': '+num(cp.v)+unit;
+  ctx.font=`700 26px ${HD}`;const lw=ctx.measureText('latest '+P[P.length-1].d.slice(0,4)+': '+num(Math.max(...P.map(q=>Math.abs(q.v))))+unit).width;ctx.fillStyle=C.ink;ctx.textAlign='right';ctx.fillText(lt,x+w-24,y+40);ctx.textAlign='left';
+  ctx.font=`500 24px ${HD}`;ctx.fillStyle=C.mute;ctx.fillText(wrap(ctx,(m.label||'').replace(/\s*\(.*$/,'')+(m.unit?' ('+m.unit+')':''),w-72-lw,1)[0]||'',x+24,y+40);
+  ctx.globalAlpha=1;
 }
 const cvOf=k=>document.querySelector(`canvas[data-pc="${CSS.escape(k)}"]`);
 async function pblob(k){const cv=cvOf(k),o=postList().find(x=>x.key===k);if(o)await drawCard(o,cv);return new Promise(r=>cv.toBlob(r,'image/png'))}
+async function pplay(k){const cv=cvOf(k),o=postList().find(x=>x.key===k);if(!o)return;await fontsReady;const my=cv._play=(cv._play||0)+1,ctx=cv.getContext('2d'),s=scene(o,ctx),t0=performance.now();
+  const step=now=>{if(my!==cv._play)return;const t=(now-t0)/1000;s.draw(Math.min(t,s.dur));if(t<s.dur)requestAnimationFrame(step)};requestAnimationFrame(step)}
+const VTYPE=['video/mp4;codecs=avc1.42E01E','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm'].find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t))||'';
+async function pvideo(k,btn){
+  if(!VTYPE){toast('This browser can\'t record video');return}
+  const o=postList().find(x=>x.key===k);if(!o)return;await fontsReady;
+  const cv=document.createElement('canvas');cv.width=1080;cv.height=1350;const ctx=cv.getContext('2d'),s=scene(o,ctx);s.draw(0);
+  const st=cv.captureStream(30),rec=new MediaRecorder(st,{mimeType:VTYPE,videoBitsPerSecond:8e6}),ch=[];rec.ondataavailable=e=>e.data.size&&ch.push(e.data);
+  const done=new Promise(r=>rec.onstop=r);const lbl=btn?btn.textContent:'';if(btn)btn.disabled=true;
+  rec.start(250);const t0=performance.now();
+  await new Promise(res=>{const step=now=>{const t=(now-t0)/1000;s.draw(Math.min(t,s.dur));if(btn)btn.textContent=`Recording… ${Math.ceil(s.dur-t)}s`;if(t<s.dur+0.3)requestAnimationFrame(step);else res()};requestAnimationFrame(step)});
+  rec.stop();await done;st.getTracks().forEach(t=>t.stop());if(btn){btn.disabled=false;btn.textContent=lbl}
+  const ext=VTYPE.includes('mp4')?'mp4':'webm',blob=new Blob(ch,{type:VTYPE.split(';')[0]});
+  let dl=null;try{dl=await claude.use('downloads')}catch{}
+  if(dl){try{await dl.save({filename:pid(k)+'.'+ext,data:blob});toast(ext==='mp4'?'Video saved':'Video saved as WebM (X needs MP4)')}catch(e){if(e&&e.code!=='declined')toast('Saving the video failed')}return}
+  const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=pid(k)+'.'+ext;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);
+}
 async function pdownload(k){const b=await pblob(k);let dl=null;try{dl=await claude.use('downloads')}catch{}if(dl){try{await dl.save({filename:pid(k)+'.png',data:b});toast('Image saved')}catch(e){if(e&&e.code!=='declined')toast('Saving the image failed')}return}const u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=pid(k)+'.png';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);toast('Image downloaded')}
 async function pcopyimg(k){try{const b=await pblob(k);await navigator.clipboard.write([new ClipboardItem({'image/png':b})]);toast('Image copied; paste it into the post')}catch{toast('Copying images isn\'t allowed here; use Download')}}
 
@@ -743,12 +797,15 @@ document.addEventListener('click',e=>{const t=e.target.closest('button,[data-per
   else if(t.id==='ics')copy(ics());
   else if(t.id==='export')copy(exportJson(),'data.json copied');
 });
-document.addEventListener('click',e=>{const t=e.target.closest('[data-pf],[data-pmore],[data-pcopy],[data-pdl],[data-pci],[data-pskip]');if(!t)return;const d=t.dataset;
+document.addEventListener('click',e=>{const t=e.target.closest('[data-pf],[data-pmore],[data-pcopy],[data-pdl],[data-pci],[data-pskip],[data-pvid],[data-pplay],canvas[data-pc]');if(!t)return;const d=t.dataset;
   if(d.pf){pfilt=d.pf;plimit=12;post()}
   else if(d.pmore){plimit+=12;post()}
   else if(d.pcopy){const[kind,k]=[d.pcopy.slice(0,1),d.pcopy.slice(2)],o=postList().find(x=>x.key===k);if(o)copy(kind==='r'?preply(o):pcap(o),kind==='r'?'Reply copied':'Caption copied')}
   else if(d.pdl)pdownload(d.pdl);
   else if(d.pci)pcopyimg(d.pci);
+  else if(d.pvid)pvideo(d.pvid,t);
+  else if(d.pplay)pplay(d.pplay);
+  else if(d.pc)pplay(d.pc);
   else if(d.pskip){const s=pst(d.pskip);psave(d.pskip,{skip:!s.skip}).then(post)}
 });
 document.addEventListener('change',e=>{const t=e.target;
