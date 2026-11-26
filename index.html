@@ -509,7 +509,7 @@ function dash(){
   $('#dash').innerHTML=tile('Latest prediction added',newest)
     +tile('Latest correct prediction',lc,chkNote(lc))+tile('Latest wrong prediction',li,chkNote(li))
     +(up?`<div class="tile wide"><h3>Prediction update</h3><span class="stamp v-${upStamp?upStamp[0]:up.verdict||'open'}">${upStamp?upStamp[1]:V[up.verdict||'open'][0]}</span><div class="head">${whoLine(up)}<p class="claim">${esc(up.claim)}</p><div class="meta"><span>Said ${fmt(up.saidOn)}${predSrc(up)?' · '+predSrc(up):''}</span>${up.targetDate?`<span>Target date ${fmt(up.targetDate)}</span>`:''}<span><a href="#ledger" data-open="${esc(up.id)}">Open dossier</a></span></div></div>${upExtra}</div>`:'')
-    +recap+topics+tile('Prediction of the day',dayP,'',dayKick);
+    +tile('Prediction of the day',dayP,chkNote(dayP),dayKick)+topics+recap;
   if(up)chart(up,document.querySelector('[data-fig2]'));
 }
 
